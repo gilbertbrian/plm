@@ -1,0 +1,81 @@
+---
+title: "PML project"
+output: html_document
+---
+
+Pre-Processing
+----------------------------
+
+First we load the required libraries:
+```{r}
+library(caret)
+library(randomForest)
+library(rpart)
+library(rpart.plot)
+```
+
+Next we read in the data files.  After looking at the files it appears we have some NAs, blanks, and #DIV/0! values.  We will convert these to NA to process more efficiently
+```{r}
+hra_train <- read.csv("C:\\Users\\gilbert\\Documents\\pml-training.csv",
+                      na.strings=c("NA","#DIV/0!", ""))
+hra_test <- read.csv("C:\\Users\\gilbert\\Documents\\pml-testing.csv",
+                     na.strings=c("NA","#DIV/0!", ""))
+```
+
+After trying to run a Random Forest on the data, it was discovered that some columns have nothing but missing values.  So we will remove these columns now:
+
+```{r}
+hra_train <- hra_train[,colSums(is.na(hra_train)) == 0]
+hra_test <- hra_test[,colSums(is.na(hra_test)) == 0]
+```
+
+Next we will partition our data set into testing and training for cross-validation purposes:
+```{r}
+dpart <- createDataPartition(y=hra_train$classe, p=0.6, list=FALSE)
+training <- hra_train[dpart, ] 
+testing <- hra_train[-dpart, ]
+
+str(training)
+```
+
+Building Classification Tree
+-------------------------
+Building:
+
+```{r}
+dt <- rpart(classe ~ ., data=training, method="class")
+```
+Predicting:
+
+```{r}
+dt_prediction <- predict(dt, testing, type = "class")
+```
+
+Plotting the tree:
+```{r}
+rpart.plot(dt, main="Classification Tree", extra=102, under=TRUE, faclen=0)
+```
+
+Confusion Matrix:
+```{r}
+confusionMatrix(dt_prediction, testing$classe)
+```
+
+Building the Random Forest Model
+-------------------------------
+Building:
+```{r}
+rf <- randomForest(classe ~. , data=training, method="class")
+```
+
+Predicting:
+```{r}
+rf_prediction <- predict(rf, testing, type = "class")
+```
+
+Confusion Matrix with test data:
+```{r}
+confusionMatrix(rf_prediction, testing$classe)
+```
+
+As can be seen, the Random Forest model outperforms the Decision Tree model.  The accuracy rate for the RF model is 99%, and thus we can expect an out of sample error rate of just 1%.
